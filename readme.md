@@ -8,7 +8,9 @@ to organize them into subfolders. The idea came after my wedding. I had a lot of
 to share them with my family and friends. I wrote this tiny program to organize the photos into subfolders like Family, 
 Friends, Print, etc... I've been learning programming for a while and this is my first working software. After reading 
 the code, you can guess that I'm more like a scripter than a programmer. I want to learn and build applications like this.
-I would appreciate it if you are an experienced programmer and want to make suggestions.## Further plans
+I would appreciate it if you are an experienced programmer and want to make suggestions.
+
+## Further plans
 
 - General bugfixes
 - General refactoring to make the code less "spaghetti"
@@ -27,7 +29,7 @@ development will be the object orientation.
 
 - If you clear the session and start a new one right away there will be a lot of malfunctions due to the scratchy cleanup
 - You cannot resize the app all the widgets' locations and sizes are hardcoded
-- The name of the collections are not validated
+- The names of the collections are not validated
 - The code is more like a script and hard to maintain
 - Typos here and there... 
 
