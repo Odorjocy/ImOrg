@@ -1,272 +1,272 @@
-import tkinter as tk
-from tkinter import filedialog
-from tkinter import simpledialog
-from tkinter import messagebox as mb
-from PIL import Image, ImageTk
 import os
 import shutil
+from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtWidgets import QAbstractItemView , QWidget, QLabel, QPushButton, QLabel, QVBoxLayout, QHBoxLayout, QListWidget, QInputDialog, QStatusBar, QMainWindow, QFileDialog, QAction, QToolBar, QMessageBox, QApplication
 
 
-def refresh_checkboxes():
-    global collections
-    global collection_assignments
-    global images
-    global current_image_index
+class Collection():
+    def __init__(self,name):
+        self.name = name
+        self.images = []
 
-    image = images[current_image_index]
+    def add_image(self,image_path):
+        self.images.append(image_path)
 
-    for collection in collections:
-        collection_name = collection.cget("text")
-        assignments = collection_assignments[collection_name]
-        if image in assignments:
-            collection.select()
+
+    def remove_image(self, image_path):
+        self.images.remove(image_path)
+
+
+    def check_image(self, image_path):
+        if image_path not in self.images:
+            return False
         else:
-            collection.deselect()
+            return True
 
 
-def assign_a_collection(collection_name):
-    global collection_assignments
-    global current_image_index
-    global images
-
-    picture_name = images[current_image_index]
-
-    if picture_name in collection_assignments[collection_name]:
-        collection_assignments[collection_name].remove(picture_name)
-    else:
-        collection_assignments[collection_name].append(picture_name)
+class Image():
+    def __init__(self,path):
+        self.path = path
+        self.image = QPixmap(path)
+        self.assigned_collections = []
 
 
-
-def initialize_a_folder(path):
-    global number_of_images, images, menu_bar
-    files_in_working_dir = []
-
-    for file in os.listdir(path):
-        if file.endswith(".jpg") or file.endswith(".png"):
-            files_in_working_dir.append(file)
-
-    if len(files_in_working_dir) > 0:
-        images = files_in_working_dir
-        number_of_images = len(files_in_working_dir)
-        status_text = f"Opened folder: {working_directory} | Number of files: {number_of_images}"
-        statusvar.set(status_text)
-        first_image_path = os.path.join(path, files_in_working_dir[0])
-        show_image(first_image_path)
-        new_collection_button.config(state="active")
-        menu_bar.entryconfig(2, state="active")
-        menu_bar.entryconfig(3, state="active")
-        menu_bar.entryconfig(4, state="active")
-        previous_image_button.config(state="active")
-        next_image_button.config(state="active")
-    else:
-        mb.showwarning("Warning", "There is picture in this folder!")
+    def assign_collection(self,collection_name):
+        self.assigned_collections.append(collection_name)
 
 
-def show_image(path):
-    global image_label
-    initial_image = Image.open(path)
-    if initial_image.width > IMAGE_GEOMETRY_Y or initial_image.height > IMAGE_GEOMETRY_X:
-        divider = 0
-        new_width = 0
-        new_height = 0
-        too_big = True
-        while too_big:
-            divider += 2
-            new_width = int(initial_image.width / divider)
-            new_height = int(initial_image.height / divider)
-            if IMAGE_GEOMETRY_Y > new_width and IMAGE_GEOMETRY_X > new_height:
-                too_big = False
-
-        temp_image = initial_image.resize((new_width, new_height))
-        image = ImageTk.PhotoImage(image=temp_image, width=400, height=40)
-    else:
-        image = ImageTk.PhotoImage(image=initial_image)
-
-    image_label.config(image=image)
-    image_label.image = image
+    def unassign_collection(self,collection_name):
+        self.assigned_collections.remove(collection_name)
 
 
-def open_a_folder():
-    global working_directory
-    working_directory = filedialog.askdirectory()
-    if len(working_directory) > 1:
-        initialize_a_folder(working_directory)
+class ImorgApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ImOrg")
+        self.resize(800, 600)
+        self.current_image_index = 0
+        self.last_image_index = 0
+        self.collections = {}
+        self.pictures = []
+        self.optionable_items = []
+        self.working_directry = ""
+        
+        main_bar = QToolBar("Main toolbar")
+        main_bar.setIconSize(QSize(16,16))
+        self.addToolBar(main_bar)
+
+        self.statusbar = QStatusBar(self)
+        self.setStatusBar(self.statusbar)
+
+        open_action = QAction(QIcon("./icons/open.png"),"&Open",self)
+        open_action.triggered.connect(self.open)
+        main_bar.addAction(open_action)
+
+        finish_action = QAction(QIcon("./icons/finish.png"),"&Finish",self)
+        self.optionable_items.append(finish_action)
+        finish_action.triggered.connect(self.finish)
+        main_bar.addAction(finish_action)
+        
+        close_action = QAction(QIcon("./icons/close.png"),"&Close",self)
+        self.optionable_items.append(close_action)
+        close_action.triggered.connect(lambda: self.reset(True))
+        main_bar.addAction(close_action)
+
+        exit_action = QAction(QIcon("./icons/exit.png"),"&Exit",self)
+        exit_action.triggered.connect(self.exit)
+        main_bar.addAction(exit_action)
+
+        for item in self.optionable_items:
+            item.setEnabled(False)
+
+    def reset(self, interactive):
+        if interactive:
+            answer = QMessageBox.question(self,"Close", "Do you really want to close this session?") 
+        else:
+            answer = 16384
+
+        if answer == 16384:
+            collection_menu.clear()
+
+            self.collections = {}
+            self.pictures = []
+            self.current_image_index = 0
+            self.working_directry = ""
+            image_label.setPixmap(QPixmap())
+            self.setStatusTip("")
 
 
-def show_next_image():
-    global number_of_images, current_image_index, images, working_directory
-
-    if current_image_index < number_of_images -1:
-        current_image_index += 1
-        next_image_path = os.path.join(working_directory, images[current_image_index])
-    else:
-        next_image_path = os.path.join(working_directory, images[0])
-        current_image_index = 0
-
-    show_image(next_image_path)
-    refresh_checkboxes()
+            for item in self.optionable_items:
+                item.setEnabled(False)
 
 
-def show_previous_image():
-    global number_of_images, current_image_index, images, working_directory
+    def initialize(self):
+        for file in os.listdir(self.working_directry):
+            if file.endswith(".jpg") or file.endswith(".JPG") or file.endswith(".png"):
+                image_full_path = os.path.join(self.working_directry, file)
+                self.pictures.append(Image(image_full_path))
 
-    if current_image_index < number_of_images -1:
-        current_image_index -= 1
-        next_image_path = os.path.join(working_directory, images[current_image_index])
-        show_image(next_image_path)
-    else:
-        next_image_path = os.path.join(working_directory, images[0])
-        current_image_index = 0
-        show_image(next_image_path)
+        if len(self.pictures) > 0:
+            self.last_image_index = len(self.pictures) - 1
+            self.display_image()
+            next_image.clicked.connect(self.next_image)
+            previous_image.clicked.connect(self.previous_image)
+        else:
+            QMessageBox.warning(self,"No image found", "There is no picture in the selected folder, please choose a folder with pictures(The supported extensions are: jpg, png)")
 
-    refresh_checkboxes()
-
-
-def close():
-    check = mb.askyesno("Exit", "Do you want to exit?")
-
-    if check:
-        main_window.destroy()
+        for item in self.optionable_items:
+            item.setEnabled(True)
 
 
-def add_new_collection():
-    global collections
-    global collection_window_last_position
-    global collection_assignments
-    collection_name = simpledialog.askstring(title="Adding new collection", prompt="What should be the name?", parent=main_window)
-    if collection_name:
-        new_collection = tk.Checkbutton(main_window, text=collection_name, variable=collection_name, onvalue=1, offvalue=0, font=("Times", "14", "bold italic"), command=lambda: assign_a_collection(collection_name))
-        collections.append(new_collection)
-        collection_assignments[collection_name] = []
-        collections_canvas.create_window(90, collection_window_last_position, window=new_collection)
-        collection_window_last_position += 30
+    def open(self):
+        folder = QFileDialog.getExistingDirectory(self, "Select a directory")
+        if folder != "":
+            if None != self.pictures:
+                self.reset(False)
+            self.working_directry = folder
+            self.setStatusTip(folder)
+            self.initialize()
+
+    def exit(self):
+        if QMessageBox.question(self,"Exit", "Are you sure you want to exit?") == 16384:
+            ImorgApp.close(self)
 
 
-def clear():
-    global images
-    global working_directory
-    global collections
-    global collection_window_last_position
-
-    collection_window_last_position = 65
-    working_directory = None
-    statusvar.set("Ready")
-    images = []
-    image_label.config(image="")
-    new_collection_button.config(state="disabled")
-    menu_bar.entryconfig(2, state="disabled")
-    menu_bar.entryconfig(3, state="disabled")
-    previous_image_button.config(state="disabled")
-    next_image_button.config(state="disabled")
-    for collection in collections:
-        collection.destroy()
+    def next_image(self):
+        if self.current_image_index == self.last_image_index:
+            self.current_image_index = 0
+        else:
+            self.current_image_index += 1
+        self.display_image()
 
 
-def checker(option):
-    global method_window
-    print(option)
-    method_window.destroy()
-    return option
+    def previous_image(self):
+        if self.current_image_index == 0:
+            self.current_image_index = self.last_image_index
+        else:
+            self.current_image_index -= 1
+        self.display_image()
 
 
-def method_question(title, text):
-    global method_window
-    method_window = tk.Toplevel(width=500)
-    method_window.title(title)
-    message = text
-    tk.Label(method_window, text=message, pady=15, padx=15, width=30).grid(row=0, column=1)
-    tk.Button(method_window, text="Copy", padx=10, pady=10, command=lambda: checker("Copy")).grid(row=1, column=0)
-    tk.Button(method_window, text="Move", padx=10, pady=10, command=lambda: checker("Move")).grid(row=1, column=1)
+    def display_image(self):
+        image_label.hide()
+        image = self.pictures[self.current_image_index]
+        for collection in collection_menu.selectedItems():
+            collection.setSelected(False)
 
 
-def finish(method):
-    global collection_assignments
-    global working_directory
-    keys = collection_assignments.keys()
-    check = mb.askyesno("Finish the project", "Do you really want to finish the session?")
+        for collection in image.assigned_collections:
+            list_entry = collection_menu.findItems(collection, Qt.MatchExactly)[0]
+            list_entry.setSelected(True)
 
-    if check and len(keys) > 0:
-        for collection in keys:
-            collection_images = collection_assignments[collection]
-            collection_path = os.path.join(working_directory, collection)
-            if not os.path.exists(collection_path):
-                os.makedirs(collection_path)
-
-            for image in collection_images:
-                original_path = os.path.join(working_directory, image)
-                new_path = os.path.join(collection_path, image)
-                shutil.copy(original_path, new_path)
-
-        if method == "Move":
-            for collection in keys:
-                collection_images = collection_assignments[collection]
-                for image in collection_images:
-                    original_path = os.path.join(working_directory, image)
-                    if os.path.exists(original_path):
-                        os.remove(original_path)
-
-        clear()
-        mb.showinfo("Session finished", "The session has been finished, all the related data has been cleared")
-    else:
-        mb.showwarning("No data", "You dont have any collection to fill")
+        image = image.image
+        iw, ih = image.width(), image.height()
+        lw, lh = image_label.width(), image_label.height()
+        if (iw > lw or ih > lh):
+            image = image.scaled(lw,lh, Qt.AspectRatioMode.KeepAspectRatio)
+        else:
+            image = image.scaled(iw,ih, Qt.AspectRatioMode.KeepAspectRatio)
+        
 
 
-# Variables
-MAIN_GEOMETRY_Y = 1400
-MAIN_GEOMETRY_X = 900
-STATUSBAR_GEOMETRY_X = 25
-COLLECTION_GEOMETRY_Y = round(MAIN_GEOMETRY_Y / 5.5)
-COLLECTION_GEOMETRY_X = MAIN_GEOMETRY_X - STATUSBAR_GEOMETRY_X
-IMAGE_GEOMETRY_Y = MAIN_GEOMETRY_Y - 260
-IMAGE_GEOMETRY_X = MAIN_GEOMETRY_X - 25
-MAIN_GEOMETRY = f"{MAIN_GEOMETRY_Y}x{MAIN_GEOMETRY_X}"
-collections = []
-collection_remove_buttons = []
-collection_assignments = {}
-collection_window_last_position = 65
-border_color = "gray"
-method_window = None
-working_directory = None
-images = []
-number_of_images = 0
-current_image_index = 0
+        image_label.setPixmap(image)
+        image_label.show()
 
-main_window = tk.Tk()
-main_window.geometry(MAIN_GEOMETRY)
-main_window.title("Image organizer")
 
-photo = tk.PhotoImage(file='ImOrg.png')
-main_window.iconphoto(False, photo)
-menu_bar = tk.Menu(main_window)
-menu_bar.add_command(label="Open", command=open_a_folder)
-menu_bar.add_command(label="Close current", command=clear, state="disabled")
-finish_menu = tk.Menu(menu_bar, tearoff=False)
-finish_menu.add_command(label="Copy", command=lambda: finish(method="Copy"))
-finish_menu.add_command(label="Move", command=lambda: finish(method="Move"))
-menu_bar.add_cascade(label="Finish", menu=finish_menu, state="disabled")
-menu_bar.add_command(label="Exit", command=close)
+    def add_collection(self, collection_name):
+        while True:
+            collection_name = QInputDialog.getText(add_collection_button, "Adding new collection","Enter a name")
 
-collections_canvas = tk.Canvas(main_window, width=COLLECTION_GEOMETRY_Y, height=COLLECTION_GEOMETRY_X, highlightthickness=1, highlightbackground=border_color)
-collection_label = tk.Label(text="Collections", width=COLLECTION_GEOMETRY_Y, height=2, font=("Times", "14", "bold italic"), highlightthickness=2, highlightbackground=border_color)
-new_collection_button = tk.Button(collections_canvas, text="+Add new collection", command=add_new_collection, state="disabled")
-collections_canvas.create_window(120, 18, window=collection_label)
-collections_canvas.create_window(60, 860, anchor=tk.W, window=new_collection_button)
+            if not collection_name[1]:
+                break
+            elif collection_name[0] in self.collections:
+                QMessageBox.warning(self,"Warning", "This collection is already exist!")
+            elif collection_name[0] == '':
+                QMessageBox.warning(self,"Warning", "Please provide a name!")
+            else:
+                collection_menu.addItem(collection_name[0])
+                self.collections[collection_name[0]] = Collection(collection_name[0])
+                break
+            
 
-image_canvas = tk.Canvas(main_window, width=IMAGE_GEOMETRY_Y, height=IMAGE_GEOMETRY_X, highlightthickness=1, highlightbackground=border_color)
-image_label = tk.Label(image_canvas)
-image_canvas.create_window(572.5, 437.5, anchor=tk.CENTER, window=image_label)
-next_image_button = tk.Button(image_canvas, width=2, height=10, text=">", command=show_next_image, state="disabled")
-previous_image_button = tk.Button(image_canvas, width=2, height=10, text="<", command=show_previous_image, state="disabled")
-image_canvas.create_window(1120, 437.5, window=next_image_button)
-image_canvas.create_window(20, 437.5, window=previous_image_button)
-image_canvas.grid(row=0, column=1)
 
-statusvar = tk.StringVar()
-statusvar.set("Ready")
-bottom_bar = tk.Label(main_window, textvariable=statusvar, anchor="w", bd=1, relief=tk.SUNKEN)
-collections_canvas.grid(row=0, column=0)
-bottom_bar.grid(row=1, column=0, columnspan=2, sticky=tk.W+tk.E)
+    def assign_image_to_collection(self, collection_name, image):
+        image_full_path = os.path.join(self.working_directry,image.path)
+        if self.collections[collection_name].check_image(image_full_path):
+            self.collections[collection_name].remove_image(image_full_path)
+            image.unassign_collection(collection_name)
+        else:
+            self.collections[collection_name].add_image(image_full_path)
+            image.assign_collection(collection_name)
 
-main_window.config(menu=menu_bar)
-main_window.mainloop()
+    
+    def finish(self):
+        if len(self.collections) == 0:
+            QMessageBox.warning(self,"No collection", "No collection has been created, nothing to proceed with.")
+        elif QMessageBox.question(self,"Finish", "Are you sure you want to finish this session?") == 16384:
+            try:
+                for collection in self.collections:
+                    collection_path = os.path.join(self.working_directry,collection)
+                    os.mkdir(collection_path)
+                    for image in self.collections[collection].images:
+                        new_path = os.path.join(collection_path, image.split("/")[-1])
+                        shutil.copy(image, new_path)
+
+                QMessageBox.information(self,"Info", "The collections have been created!")
+                self.reset(False)
+            except:
+                QMessageBox.warning(self,"Warning", "Something went wrong when finalyzing the pictures...")
+
+
+app = QApplication([])
+main_window = ImorgApp()
+main_widget = QWidget()
+
+add_collection_button = QPushButton("New collection")
+add_collection_button.setEnabled(False)
+main_window.optionable_items.append(add_collection_button)
+add_collection_button.clicked.connect(main_window.add_collection)
+collection_menu = QListWidget()
+collection_menu.setSelectionMode(QAbstractItemView.MultiSelection)
+collection_menu.setMinimumWidth(250)
+collection_menu.itemPressed.connect(lambda: main_window.assign_image_to_collection(collection_menu.currentItem().text(), main_window.pictures[main_window.current_image_index]))
+image_label = QLabel()
+image_label.setAlignment(Qt.AlignCenter)
+status_bar_layout = QHBoxLayout()
+
+main_layout = QVBoxLayout()
+
+main_row = QHBoxLayout()
+
+collection_layout = QVBoxLayout()
+collection_layout.addWidget(collection_menu)
+collection_layout.addWidget(add_collection_button)
+
+image_layout = QHBoxLayout()
+previous_image = QPushButton()
+previous_image.setEnabled(False)
+previous_image.setFixedSize(QSize(40,200))
+previous_image.setIcon(QIcon("./icons/previous.png"))
+main_window.optionable_items.append(previous_image)
+next_image = QPushButton()
+next_image.setEnabled(False)
+next_image.setFixedSize(QSize(40,200))
+next_image.setIcon(QIcon("./icons/next.png"))
+main_window.optionable_items.append(next_image)
+image_layout.addWidget(previous_image)
+image_layout.addWidget(image_label)
+image_layout.addWidget(next_image)
+
+
+main_row.addLayout(collection_layout, 10)
+main_row.addLayout(image_layout, 80)
+main_layout.addLayout(main_row)
+main_layout.addLayout(status_bar_layout)
+
+main_widget.setLayout(main_layout)
+main_window.setCentralWidget(main_widget)
+
+
+main_window.show()
+app.exec()
