@@ -1,7 +1,7 @@
 # ImOrg
 
 > [!warning]
-> **This program is a learning project and contains bugs! Use it on your responsibility!**
+> **This program is a learning project and contains bugs! Use at your own risk!**
 
 This program helps you to organize your pictures. It comes in handy when you have a lot of pictures in a folder and want 
 to organize them into subfolders. The idea came after my wedding. I had a lot of pictures in a single folder and wanted 
@@ -22,8 +22,7 @@ I would appreciate it if you are an experienced programmer and want to make sugg
   - Saving the session
   - Handling large amounts of pictures
 
-The items are not in implementation order. Because this is just an application for learning the most important 
-development will be the object orientation.
+The items are not in implementation order.
 
 ## Known issues
 
@@ -33,4 +32,4 @@ development will be the object orientation.
 
 ## Contribution 
 
-I welcome every suggestion or development idea, if you want, feel free to fork the repo.
+I welcome every suggestion or idea. Feel free to fork the repo.
